@@ -6,6 +6,24 @@ The system is designed to be modular, cost-effective, and easy to extend.
 
 ---
 
+## 📚 Table of Contents
+- [Real-World Analogy](#real-world-analogy-for-non-tech-folks)
+- [Tech Stack](#tech-stack)
+- [How It Works](#how-it-works)
+- [Lambda Function Code](#lambda-function-code-dubenotifypy)
+  - [Version 1: Basic Lambda](#version-1-basic-lambda)
+  - [Version 2: Triggered by S3](#version-2-triggered-by-s3)
+  - [Version 3: With File Type Filtering](#version-3-with-file-type-filtering)
+- [IAM Policy](#iam-inline-policy-for-lambda-execution-role)
+- [SNS Setup](#sns-setup-via-aws-cli)
+- [S3 Setup](#s3-event-notification-setup-json-format)
+- [Architecture Diagram](#architecture-diagram)
+- [Testing](#testing)
+- [Future Enhancements](#future-enhancements-optional)
+- [Final Notes](#final-notes)
+
+---
+
 ## 🧠 Real-World Analogy (For Non-Tech Folks)
 
 Imagine you run a small office.  
@@ -18,45 +36,36 @@ It ignores everything else — quietly and efficiently.
 
 ## 🛠️ Tech Stack
 
-- **AWS S3** – Stores uploaded files
-- **AWS Lambda** – Processes file upload events
-- **AWS SNS (Simple Notification Service)** – Sends email alerts
-- **IAM Roles** – Secure access between services
+- **AWS S3** – Stores uploaded files  
+  - Bucket Name: `dube-notify-bucket`  
+  - Folder (Prefix): Files uploaded to root or under `uploads/`
+- **AWS Lambda** – Processes file upload events  
+  - Function Name: `DubeNotifyHandler`
+- **AWS SNS** – Sends email alerts  
+  - Topic Name: `DubeNotifyTopic`
+- **IAM Roles** – Secure access between services  
+  - Role Name: `LambdaSNSPublishRole`
 
 ---
 
 ## 🚀 How It Works
 
-1. A file is uploaded to a specific S3 bucket
-2. S3 triggers a Lambda function
+1. A file is uploaded to the S3 bucket
+2. S3 triggers the Lambda function
 3. Lambda checks if the file ends with `.csv`
-4. If yes, Lambda publishes a message to an SNS topic
+4. If yes, Lambda publishes a message to the SNS topic
 5. SNS sends an email to the configured recipient
 
 ---
 
-
-
-
-
-
 ## 📜 Lambda Function Code (`dubenotify.py`)
 
+### 🧪 Version 1: Basic Lambda
 
-
----
-
-## 🧠 Lambda Function Evolution
-
-Below are the three versions of the Lambda function used throughout the project. Each version reflects a different phase of development.
-
----
-
-### 🧪 Version 1: Basic Lambda for Manual Testing
-
-This version was used to test SNS alerts manually by sending a message via the Lambda console.
+Used for manual testing via the Lambda console.
 
 ```python
+
 import boto3
 import os
 
@@ -80,224 +89,145 @@ def lambda_handler(event, context):
 ```
 
 🧪 How to Test This Version
-
 In the Lambda console:
 
-Click Test
+1. Click Test
 
-Create a test event with the following JSON:
+2. Create a test event with the following JSON:
 
-``` json
+
+```Json
+
 {
   "message": "🚨 Alert: Something important happened!"
 }
 
 ```
 
-📁 Version 2: Lambda Triggered by S3 Uploads
-
-This version was used when the Lambda was connected to an S3 bucket to an S3 bucket. It extracts the. It extracts the bucket name and file key from the bucket name and file key from the event and sends event and sends an alert.
+3. Run the test → You should receive an email alert.
 
 
+📁 Version 2: Triggered by S3
 
-```python
-import boto3
-import os
+Used when Lambda was connected to S3. Sends alerts for any file type.
 
-sns = boto3
+``` python
+
 import boto3
 import os
 
 sns = boto3.client('sns')
 
-.client('sns')
-
-def lambda_handlerdef lambda_handler(event, context):
-    # Extract bucket and object info(event, context):
-    # Extract bucket and object info from S3 event
-    from S3 event
-    record = event['Records'] record = event['Records'][0]
+def lambda_handler(event, context):
+    record = event['Records'][0]
     bucket = record['s3']['bucket']['name']
-    key[0]
-    bucket = record['s3']['bucket']['name']
-    key = record['s3']['object'] = record['s3']['object']['key']
+    key = record['s3']['object']['key']
 
-    message = f"📁 New file uploaded to S3:
-
-\['key']
-
-    message = f"📁 New filenBucket: {bucket}\nKey: {key}"
-    uploaded to S3:\ topic_arn = os.environ['SNS_TOPIC_ARN']
-
-    response = snsnBucket: {bucket}\nKey: {key}"
+    message = f"📁 New file uploaded to S3:\nBucket: {bucket}\nKey: {key}"
     topic_arn = os.environ['SNS_TOPIC_ARN']
 
     response = sns.publish(
         TopicArn=topic_arn,
         Message=message,
-        Subject.publish(
-        TopicArn=topic_arn,
-        Message=message,
-        Subject='DubeNotify S3 Alert='DubeNotify S3 Alert'
-    )
-
-    return'
+        Subject='DubeNotify S3 Alert'
     )
 
     return {
-        'status {
         'statusCode': 200,
-       Code': 200,
-        'body': f"Alert 'body': f"Alert sent for S3 upload sent for S3 upload: {response['MessageId']}"
-: {response['MessageId']}"
+        'body': f"Alert sent for S3 upload: {response['MessageId']}"
     }
+
 
 ```
 
+✅ Sends alerts for any file type uploaded to the bucket.
 
-> ✅ This version sends alerts version sends alerts for **any file type for **any file type** uploaded to the S3 bucket.
 
----
+🧠 Version 3: With File Type Filtering
 
-** uploaded to the S3 bucket.
+Final version — only sends alerts for .csv files.
 
----
+```
 
-### 🧠 Version 3### 🧠 Version 3: Lambda with File: Lambda with File Type Filtering
-
-This final version Type Filtering
-
-This final version adds logic to only adds logic to only send alerts for send alerts for `.csv` files. It `.csv` files. It ignores other file ignores other file types to reduce noise.
-
-```python types to reduce
-
-import boto3
-import noise.
-
-```python
 import boto3
 import os
 
 sns = boto3.client('sns')
 
-def lambda_handler os
-
-sns = boto3.client('sns')
-
-(event, context):
-    # Extract bucket and object infodef lambda_handler(event, context):
-    # Extract bucket and object info from S3 event
-    from S3 event
-    record = event['Records'] record = event['Records'][0]
-    bucket =[0]
-    bucket = record['s3']['bucket'] record['s3']['bucket']['name']
-    key['name']
-    key = record['s3']['object'] = record['s3']['object']['key']
-
-    # Filter: Only alert for['key']
+def lambda_handler(event, context):
+    record = event['Records'][0]
+    bucket = record['s3']['bucket']['name']
+    key = record['s3']['object']['key']
 
     # Filter: Only alert for .csv files
-    if .csv files
-    if not key.lower(). not key.lower().endswith('.csv'):
-endswith('.csv'):
-        print(f"I        print(f"Ignored file: {key}")
+    if not key.lower().endswith('.csv'):
+        print(f"Ignored file: {key}")
         return {
             'statusCode': 200,
-            'bodygnored file: {key': f"Ignored file}")
-        return {
-            'statusCode': 200: {key}"
-        }
-
-    message = f"📊 CSV file uploaded,
             'body': f"Ignored file: {key}"
         }
 
-    message = f"📊 CSV file uploaded:\nBucket: {bucket:\nBucket: {bucket}\nKey: {key}"
-    topic_arn = os.environ}\nKey: {key}"
+    message = f"📊 CSV file uploaded:\nBucket: {bucket}\nKey: {key}"
     topic_arn = os.environ['SNS_TOPIC_ARN']
 
-['SNS_TOPIC_ARN']
-
-    response = sns    response = sns.publish(
-        TopicArn=topic_arn,
-       .publish(
+    response = sns.publish(
         TopicArn=topic_arn,
         Message=message,
-        Subject='DubeNotify CSV Message=message,
         Subject='DubeNotify CSV Alert'
     )
 
-    Alert'
-    )
-
     return {
-        return {
-        'statusCode': 200 'statusCode': 200,
-        'body': f"CSV alert sent,
+        'statusCode': 200,
         'body': f"CSV alert sent: {response['MessageId']}"
     }
 
+
 ```
 
-
-> ✅ This version is used in the final setup and only sends alerts in the final setup and only sends alerts for `.csv` uploads for `.csv` uploads.
-
-
-## 🧠 Why Include All Versions Include All Versions?
-
-
-
-- Shows how the project evolved project evolved
-- Helps others understand your thought process your thought process
-- Makes it easy to reuse or modify the code later
- to reuse or modify the code later
-- Demonstrates real-world development practices
-
+✅ This version is used in the final setup and only sends alerts for .csv uploads.
 
 
 🔐 IAM Inline Policy for Lambda Execution Role
 Attach this inline policy to your Lambda’s IAM role:
 
-```json
-
-
+``` json
 {
   "Version": "2012-10-17",
   "Statement": [
     {
       "Effect": "Allow",
       "Action": "sns:Publish",
-      "Resource": "arn:aws:sns:your-region:your-account-id:your-topic-name"
+      "Resource": "arn:aws:sns:your-region:your-account-id:DubeNotifyTopic"
     }
   ]
 }
 
 ```
 
-
 📧 SNS Setup (via AWS CLI)
-Create an SNS topic and subscribe your email:
-
 bash
-aws sns create-topic --name dubenotify-topic
+
+```
+aws sns create-topic --name DubeNotifyTopic
 
 aws sns subscribe \
-  --topic-arn arn:aws:sns:your-region:your-account-id:dubenotify-topic \
+  --topic-arn arn:aws:sns:your-region:your-account-id:DubeNotifyTopic \
   --protocol email \
   --notification-endpoint your.email@example.com
+```
+
 📩 You’ll receive a confirmation email — click the link to activate the subscription.
 
 
-
 🪣 S3 Event Notification Setup (JSON Format)
-Configure your S3 bucket to trigger Lambda on file uploads:
 
-``` json
+```Json
+
 {
   "LambdaFunctionConfigurations": [
     {
       "Id": "NotifyOnCSVUpload",
-      "LambdaFunctionArn": "arn:aws:lambda:your-region:your-account-id:function:dubenotify-function",
+      "LambdaFunctionArn": "arn:aws:lambda:your-region:your-account-id:function:DubeNotifyHandler",
       "Events": ["s3:ObjectCreated:*"],
       "Filter": {
         "Key": {
@@ -318,27 +248,31 @@ Configure your S3 bucket to trigger Lambda on file uploads:
 You can apply this via the AWS Console or using the put-bucket-notification-configuration CLI command.
 
 
-
-🧱 Architecture Diagram: 
+🧱 Architecture Diagram
 
 S3 Bucket ──▶ Lambda Function ──▶ SNS Topic ──▶ Email Notification
 
-Diagrams can be created using tools like:
+Visualize this using tools like Lucidchart, Draw.io, or Excalidraw.
 
-Lucidchart, Draw.io and Excalidraw
 
 
 🧪 Testing
+
 ✅ Upload a .csv file → Email alert received
 
 ❌ Upload a .jpg or .txt file → No alert sent
 
+
 🧭 Future Enhancements (Optional)
 
 - Add Slack or SMS alerts
+
 - Filter based on file size or content
+
 - Use CloudWatch for logging and metrics
+
 - Deploy via CloudFormation or Terraform
 
 
-
+🙌 Final Notes
+This project was built as a hands-on exploration of AWS event-driven architecture. It demonstrates how to connect core AWS services in a modular, secure, and scalable way.
